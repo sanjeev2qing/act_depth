@@ -1,0 +1,2 @@
+python3 record_episodes.py --task_name aloha_wear_shoe --episode_idx 0
+

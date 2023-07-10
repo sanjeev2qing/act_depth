@@ -7,7 +7,11 @@ from torch import nn
 from torch.autograd import Variable
 from .backbone import build_backbone
 from .transformer import build_transformer, TransformerEncoder, TransformerEncoderLayer
+<<<<<<< HEAD
 
+=======
+from einops import rearrange
+>>>>>>> colorized
 import numpy as np
 
 import IPython
@@ -125,7 +129,11 @@ class DETRVAE(nn.Module):
                 all_cam_features.append(self.input_proj(features))
                 all_cam_pos.append(pos)
             # depth
+<<<<<<< HEAD
             depth = depth.repeat(1, 3, 1, 1)
+=======
+            depth = rearrange(depth, 'b h w c -> b c h w')
+>>>>>>> colorized
             features, pos = self.backbones[1](depth)  # HARDCODED
             features = features[0]  # take the last layer feature
             pos = pos[0]
