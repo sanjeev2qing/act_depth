@@ -36,6 +36,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
             # get observation at start_ts only
             qpos = root['/observations/qpos'][start_ts]
             qvel = root['/observations/qvel'][start_ts]
+            depth = root['/observations/depth'][start_ts]
             image_dict = dict()
             for cam_name in self.camera_names:
                 image_dict[cam_name] = root[f'/observations/images/{cam_name}'][start_ts]
@@ -61,6 +62,8 @@ class EpisodicDataset(torch.utils.data.Dataset):
 
         # construct observations
         image_data = torch.from_numpy(all_cam_images)
+        depth = depth.astype(np.int32)
+        depth_data = torch.from_numpy(depth)
         qpos_data = torch.from_numpy(qpos).float()
         action_data = torch.from_numpy(padded_action).float()
         is_pad = torch.from_numpy(is_pad).bool()
@@ -70,10 +73,11 @@ class EpisodicDataset(torch.utils.data.Dataset):
 
         # normalize image and change dtype to float
         image_data = image_data / 255.0
+        depth_data = depth_data/depth_data.max()
         action_data = (action_data - self.norm_stats["action_mean"]) / self.norm_stats["action_std"]
         qpos_data = (qpos_data - self.norm_stats["qpos_mean"]) / self.norm_stats["qpos_std"]
 
-        return image_data, qpos_data, action_data, is_pad
+        return image_data, depth_data, qpos_data, action_data, is_pad
 
 
 def get_norm_stats(dataset_dir, num_episodes):

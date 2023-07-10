@@ -56,6 +56,7 @@ class DETRVAE(nn.Module):
             self.input_proj = nn.Conv2d(backbones[0].num_channels, hidden_dim, kernel_size=1)
             self.backbones = nn.ModuleList(backbones)
             self.input_proj_robot_state = nn.Linear(14, hidden_dim)
+            self.subinput_proj = nn.Conv2d(backbones[0].num_channels, hidden_dim, kernel_size=1)
         else:
             # input_dim = 14 + 7 # robot_state + env_state
             self.input_proj_robot_state = nn.Linear(14, hidden_dim)
@@ -75,7 +76,7 @@ class DETRVAE(nn.Module):
         self.latent_out_proj = nn.Linear(self.latent_dim, hidden_dim) # project latent sample to embedding
         self.additional_pos_embed = nn.Embedding(2, hidden_dim) # learned position embedding for proprio and latent
 
-    def forward(self, qpos, image, env_state, actions=None, is_pad=None):
+    def forward(self, qpos, depth, image, env_state, actions=None, is_pad=None):
         """
         qpos: batch, qpos_dim
         image: batch, num_cam, channel, height, width
@@ -123,6 +124,14 @@ class DETRVAE(nn.Module):
                 pos = pos[0]
                 all_cam_features.append(self.input_proj(features))
                 all_cam_pos.append(pos)
+            # depth
+            depth = depth.repeat(1, 3, 1, 1)
+            features, pos = self.backbones[1](depth)  # HARDCODED
+            features = features[0]  # take the last layer feature
+            pos = pos[0]
+            all_cam_features.append(self.input_proj(features))
+            all_cam_pos.append(pos)
+
             # proprioception features
             proprio_input = self.input_proj_robot_state(qpos)
             # fold camera dimension into width dimension
@@ -171,10 +180,11 @@ class CNNMLP(nn.Module):
         else:
             raise NotImplementedError
 
-    def forward(self, qpos, image, env_state, actions=None):
+    def forward(self, qpos, depth, image, env_state, actions=None):
         """
         qpos: batch, qpos_dim
         image: batch, num_cam, channel, height, width
+        depth: batch, height, width
         env_state: None
         actions: batch, seq, action_dim
         """
@@ -233,8 +243,9 @@ def build(args):
     # backbone = None # from state for now, no need for conv nets
     # From image
     backbones = []
-    backbone = build_backbone(args)
+    backbone, subbackbone = build_backbone(args)
     backbones.append(backbone)
+    backbones.append(subbackbone)
 
     transformer = build_transformer(args)
 
